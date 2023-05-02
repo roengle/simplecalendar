@@ -1,8 +1,10 @@
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:simplecalendar_raw/presentation/Entype.dart';
+import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 void main() {
   runApp(MyApp());
@@ -29,25 +31,9 @@ class MyApp extends StatelessWidget {
 }
 
 class MyAppState extends ChangeNotifier {
-  var current = WordPair.random();
-  var favorites = <WordPair>{};
   var uuid;
 
-  void getNext() {
-    current = WordPair.random();
-    notifyListeners();
-  }
-
-  void toggleFavorite() {
-    if(favorites.contains(current)){
-      favorites.remove(current);
-    }else{
-      favorites.add(current);
-    }
-    notifyListeners();
-  }
-
-  Future<String?> _getId() async {
+  Future<String?> getId() async {
     var deviceInfo = DeviceInfoPlugin();
     var androidDeviceInfo = await deviceInfo.androidInfo;
 
@@ -58,14 +44,11 @@ class MyAppState extends ChangeNotifier {
   }
 
   String getUuid(){
-
-    _getId().then((result){
-      print("waa");
-      print(result);
-      setUuid(result!);
+    getId().then((result){
+      setUuid(result);
     });
 
-    return uuid;
+    return uuid != null ? uuid : "0";
   }
 
   setUuid(String? result){
@@ -83,6 +66,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void initState(){
+    MyAppState().getId();
     //Init code here
     super.initState();
   }
@@ -97,7 +81,7 @@ class _MyHomePageState extends State<MyHomePage> {
         break;
       case 1:
         //Favorites
-        page = FavoritesPage();
+        page = MyCalendarPage();
         break;
       case 2:
         //Friends
@@ -171,73 +155,20 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
-    var pair = appState.current;
-
-    IconData icon;
-    if (appState.favorites.contains(pair)) {
-      icon = Icons.favorite;
-    } else {
-      icon = Icons.favorite_border;
-    }
 
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          BigCard(pair: pair),
-          SizedBox(height: 10),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  appState.toggleFavorite();
-                },
-                icon: Icon(icon),
-                label: Text('Like'),
-              ),
-              SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: () {
-                  appState.getNext();
-                },
-                child: Text('Next'),
-              ),
-            ],
-          ),
-        ],
-      ),
+      
     );
   }
 }
 
-class FavoritesPage extends StatelessWidget{
+class MyCalendarPage extends StatelessWidget{
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
-    var messages = appState.favorites;
-
-    if(messages.isEmpty) {
-      return Center(
-        child: Text("No items yet"),
-      );
-    }
 
     return Center(
-      child: ListView(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text("You have ${messages.length} items."),
-          ),
-          for(var pair in messages)
-            ListTile(
-              title: Text(pair.asLowerCase),
-              leading: Icon(Icons.favorite),
-            )
 
-        ],
-      ),
     );
   }
 }
@@ -246,26 +177,67 @@ class SettingsPage extends StatelessWidget{
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
-    var uuid = appState.getUuid();
+    String uuid = appState.getUuid();
 
 
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(
-            width: 280,
-            child: TextFormField(
-              readOnly: true,
-              decoration: const InputDecoration(
-                icon: Icon(Icons.fingerprint_outlined),
-                labelText: "Device Identifier",
-
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 200,
+                child: TextFormField(
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    icon: Icon(Icons.fingerprint_outlined),
+                    labelText: "Device Identifier",
+                  ),
+                  textAlign: TextAlign.left,
+                  initialValue: uuid,
+                ),
               ),
-              textAlign: TextAlign.center,
-              initialValue: "id",
-            ),
-          )
+              ElevatedButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: uuid));
+
+                    final snackBar = SnackBar(
+                      content: const Text("Copied to clipboard"),
+                    );
+
+                    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                  },
+                  icon: Icon(Icons.copy),
+                  label: Text("Copy"))
+            ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 200,
+                child: TextFormField(
+                  readOnly: false,
+                  decoration: InputDecoration(
+                    icon: Icon(Icons.person),
+                    labelText: "Name"
+                  ),
+                ),
+              ),
+              ElevatedButton.icon(
+                  onPressed: (){
+                    final snackBar = SnackBar(
+                      content: const Text("Name saved!"),
+                    );
+
+                    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                  },
+                  icon: Icon(Icons.save),
+                  label: Text("Save")),
+            ],
+          ),
         ],
       ),
     );
